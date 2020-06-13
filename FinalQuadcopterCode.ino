@@ -26,6 +26,8 @@ float alpha_ang = 0.8;
 bool first_acc = 1;
 bool first_gyr = 1;
 bool first_ang = 1;
+bool only_once = 1;
+bool davidisbadatwarzone = 1;
 
 float timePrev, timeCur, timeElapsed;
 bool atRest = 1;
@@ -37,7 +39,10 @@ int count2;
 float acc_ang_x, acc_ang_y;
 float ang_x_true, ang_y_true;
 
-int x, y; // Integers used to determine the desired angle/direction of the quadcopter
+// Integers used to determine the desired angle/direction of the quadcopter
+int x = 127;
+int y = 127;
+
 float x_des, y_des; // Desired x and y angles of the quadcopter
 float x_err, y_err; // Error in the x- and y-angles
 float x_err_prev, y_err_prev; // Previous errors in the x- and y- angles
@@ -45,12 +50,12 @@ float x_err_prev, y_err_prev; // Previous errors in the x- and y- angles
 int throttle; // Input throttle of the quadcopter
 
 // PID Constants:
-float Kp_x; 
-float Kp_y;
+float Kp_x = 0; 
+float Kp_y = 0;
 float Ki_x = 0;
 float Ki_y = 0;
-float Kd_x;
-float Kd_y;
+float Kd_x = 0;
+float Kd_y = 0;
 
 float x_p, x_i, x_d, y_p, y_i, y_d; // Proportional, integral, and derivative errors for both the x- and y-axes
 int x_pid1, x_pid2, y_pid1, y_pid2; // Raw PID signal values to be passed to the motors
@@ -72,7 +77,7 @@ void setup()
   ESC_LF.attach(11, 1000, 2000);
   ESC_RF.attach(12, 1000, 2000);
 
-  calibrateESCs(); 
+  calibrateESCs();
 }
 
 void PIDTimer()
@@ -113,22 +118,17 @@ BLYNK_WRITE(V4)
 
 BLYNK_WRITE(V10)
 {
-  Kp_x = param.asInt();
+  //Kp_y = param.asInt();
 }
 
 BLYNK_WRITE(V11)
 {
-  Kp_y = param.asInt();
+  //Ki_y = param.asInt();
 }
 
 BLYNK_WRITE(V12)
 {
-  Kd_x = param.asInt();
-}
-
-BLYNK_WRITE(V13)
-{
-  Kd_y = param.asInt();
+  //Kd_y = param.asInt();
 }
 
 void loop() 
@@ -212,9 +212,16 @@ void loop()
 
   // PID Control for x-angle:
   x_des = map(x, 0, 254, -15, 15);
-  Serial.println(x_des);
   x_err_prev = x_err;
-  x_err = ang_x_true - x_des;
+  
+  if(only_once)
+  {
+    x_err = 0;
+  }
+  else
+  {
+    x_err = ang_x_true - x_des;
+  }
 
   // Implementing Anti-Windup Method (Clamping):
   if((((x_pid1 < 1100) || (x_pid1 > 2000)) || ((x_pid2 < 1100) || (x_pid2 > 2000))) && (x_i * x_p > 0))
@@ -225,14 +232,13 @@ void loop()
   {
     x_i = x_i + (timeElapsed * x_err);  
   }
-  
   x_d = ((x_err - x_err_prev)/(timeElapsed));
   
-  //x_pid1 = (int) throttle - ((Kp_x * x_err) + (Ki_x * x_i) + (Kd_x * x_d));
-  x_pid1 = (int) throttle - ((Kp_x * x_err) + (Kd_x * x_d));
-  x_pid2 = (int) throttle + ((Kp_x * x_err) + (Kd_x * x_d));
-  //x_pid2 = (int) throttle + ((Kp_x * x_err) + (Ki_x * x_i) + (Kd_x * x_d));
+  x_pid1 = (int) throttle - ((Kp_x * x_err) + (Ki_x * x_i) + (Kd_x * x_d));
+  x_pid2 = (int) throttle + ((Kp_x * x_err) + (Ki_x * x_i) + (Kd_x * x_d));
 
+  //x_pid1 = (int) throttle - ((Kp_x * x_err) + (Kd_x * x_d));
+  //x_pid2 = (int) throttle + ((Kp_x * x_err) + (Kd_x * x_d));
   
   // Implementing saturation:
   if(x_pid1 < 1100)
@@ -265,7 +271,16 @@ void loop()
   // PID Control for y-angle:
   y_des = map(y, 0, 254, -15, 15);
   y_err_prev = y_err;
-  y_err = ang_y_true - y_des;
+
+  if(only_once)
+  {
+    y_err = 0;
+    only_once = 0;
+  }
+  else
+  {
+    y_err = ang_y_true - y_des;
+  }
 
   // Implementing Anti-Windup Method (Clamping):
   if((((y_pid1 < 1100) || (y_pid1 > 2000)) || ((y_pid2 < 1100) || (y_pid2 > 2000))) && (y_i * y_p > 0))
@@ -279,11 +294,11 @@ void loop()
   
   y_d = ((y_err - y_err_prev)/(timeElapsed));
   
-  //y_pid1 = (int) throttle - ((Kp_y * y_err) + (Ki_y * y_i) + (Kd_y * y_d));
-  //y_pid2 = (int) throttle + ((Kp_y * y_err) + (Ki_y * y_i) + (Kd_y * y_d));
+  y_pid1 = (int) throttle - ((Kp_y * y_err) + (Ki_y * y_i) + (Kd_y * y_d));
+  y_pid2 = (int) throttle + ((Kp_y * y_err) + (Ki_y * y_i) + (Kd_y * y_d));
 
-  y_pid1 = (int) throttle - ((Kp_y * y_err) + (Kd_y * y_d));
-  y_pid2 = (int) throttle + ((Kp_y * y_err) + (Kd_y * y_d));
+  //y_pid1 = (int) throttle - ((Kp_y * y_err) + (Kd_y * y_d));
+  //y_pid2 = (int) throttle + ((Kp_y * y_err) + (Kd_y * y_d));
   
   // Implementing saturation:
   if(y_pid1 < 1100)
@@ -312,11 +327,13 @@ void loop()
     y_sig2 = y_pid2;
   }
 
+  // Calculates the PWM signals to be written to the motors
   sigLF = 0.5 * (x_sig1 + y_sig2);
   sigLB = 0.5 * (x_sig1 + y_sig1);
   sigRB = 0.5 * (x_sig2 + y_sig1);
   sigRF = 0.5 * (x_sig2 + y_sig2);
 
+  // Writes the PWM signals to the motors:
   ESC_LF.write(sigLF);
   ESC_LB.write(sigLB);
   ESC_RB.write(sigRB);
