@@ -11,8 +11,8 @@ WidgetLCD lcd(V3);
 BlynkTimer timer;
 
 char auth[] = "Vwkvy_LoHJb4dKkoGqXMkqrOgLETZGDZ";
-char ssid[] = "ggloffice";
-char pass[] = "lundyter14";
+char ssid[] = "wifissid";
+char pass[] = "wifipassword";
 
 Servo ESC_RB, ESC_LB, ESC_LF, ESC_RF;
 
@@ -27,7 +27,6 @@ bool first_acc = 1;
 bool first_gyr = 1;
 bool first_ang = 1;
 bool only_once = 1;
-bool davidisbadatwarzone = 1;
 
 float timePrev, timeCur, timeElapsed;
 bool atRest = 1;
